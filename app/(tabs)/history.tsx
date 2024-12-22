@@ -2,27 +2,20 @@ import { View, StyleSheet, Button, FlatList, Text } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useLocationStore } from '@/store/locationStore';
 import { useEffect } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function HistoryScreen() {
-  const { records, exportToCSV, loadRecordsFromLocalStorage } = useLocationStore();
+  const { sessions, exportToCSV, loadRecordsFromLocalStorage } = useLocationStore();
 
   useEffect(() => {
     loadRecordsFromLocalStorage();
   }, []);
 
-  const groupedRecords = records.reduce((acc, record) => {
-    const date = new Date(record.timestamp).toLocaleDateString();
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(record);
-    return acc;
-  }, {} as Record<string, typeof records>);
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={['#0000FF', '#FFFFFF']} style={styles.container}>
       <FlatList
-        data={Object.entries(groupedRecords)}
+        data={Object.entries(sessions)}
         keyExtractor={([date]) => date}
         renderItem={({ item: [date, dayRecords] }) => (
           <View style={styles.dateGroup}>
@@ -35,9 +28,7 @@ export default function HistoryScreen() {
         )}
       />
       <Button title="导出数据" onPress={exportToCSV} />
-      <Text>{JSON.stringify(records)}</Text>
-
-    </View>
+    </LinearGradient>
   );
 }
 

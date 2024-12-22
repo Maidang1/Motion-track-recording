@@ -7,10 +7,12 @@ interface LocationRecord {
   timestamp: number;
   latitude: number;
   longitude;
+  sessionName?: string;
 }
 
 interface LocationStore {
-  records: LocationRecord[];
+  sessions: Record<string, LocationRecord[]>;
+  tempRecords: LocationRecord[];
   isTracking: boolean;
   addRecord: (record: LocationRecord) => void;
   setTracking: (status: boolean) => void;
@@ -18,16 +20,20 @@ interface LocationStore {
   exportToCSV: () => Promise<void>;
   saveRecordsToLocalStorage: () => Promise<void>;
   loadRecordsFromLocalStorage: () => Promise<void>;
+  endSession: (name: string) => Promise<void>;
 }
 
 export const useLocationStore = create<LocationStore>((set, get) => ({
-  records: [],
+  sessions: {},
+  tempRecords: [],
   isTracking: false,
-  addRecord: (record) => set((state) => ({ records: [...state.records, record] })),
+  addRecord: (record) => set((state) => ({
+    tempRecords: [...state.tempRecords, record]
+  })),
   setTracking: (status) => set({ isTracking: status }),
-  clearRecords: () => set({ records: [] }),
+  clearRecords: () => set({ tempRecords: [] }),
   exportToCSV: async () => {
-    const records = get().records;
+    const records = get().tempRecords;
     if (!records.length) return;
     const csvContent = records
       .map(r => `${r.timestamp},${r.latitude},${r.longitude}`)
@@ -37,13 +43,21 @@ export const useLocationStore = create<LocationStore>((set, get) => ({
     await Sharing.shareAsync(fileUri);
   },
   saveRecordsToLocalStorage: async () => {
-    const records = get().records;
-    await AsyncStorage.setItem('records', JSON.stringify(records));
+    const sessions = get().sessions;
+    await AsyncStorage.setItem('sessions', JSON.stringify(sessions));
   },
   loadRecordsFromLocalStorage: async () => {
-    const stored = await AsyncStorage.getItem('records');
+    const stored = await AsyncStorage.getItem('sessions');
     if (stored) {
-      set({ records: JSON.parse(stored) });
+      set({ sessions: JSON.parse(stored) });
     }
+  },
+  endSession: async (name: string) => {
+    set((state) => ({
+      sessions: { ...state.sessions, [name]: [...state.tempRecords] },
+      tempRecords: [],
+      isTracking: false
+    }));
+    await get().saveRecordsToLocalStorage();
   },
 }));

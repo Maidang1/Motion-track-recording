@@ -1,15 +1,15 @@
 import { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, Button, View } from 'react-native';
+import { StyleSheet, Text, Button, View, Alert } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { ThemedView } from './ThemedView';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocationStore } from '@/store/locationStore';
 
 export default function LocationMap() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const locationInterval = useRef<NodeJS.Timeout>();
-  const { isTracking, setTracking, addRecord, records } = useLocationStore();
+  const { isTracking, setTracking, addRecord, tempRecords, endSession } = useLocationStore();
 
   const startTracking = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -33,7 +33,15 @@ export default function LocationMap() {
     if (locationInterval.current) {
       clearInterval(locationInterval.current);
     }
-    await useLocationStore.getState().saveRecordsToLocalStorage();
+    Alert.prompt('结束运动', '请输入本次运动名称', [
+      {
+        text: '确定',
+        onPress: async (name) => {
+          await endSession(name || '未命名');
+        },
+      },
+      { text: '取消', style: 'cancel' },
+    ]);
     setTracking(false);
   };
 
@@ -46,7 +54,7 @@ export default function LocationMap() {
   }, []);
 
   return (
-    <ThemedView style={styles.container}>
+    <LinearGradient colors={['#0000FF', '#FFFFFF']} style={styles.container}>
       <View style={styles.buttonContainer}>
         {!isTracking ? (
           <Button title="开始运动" onPress={startTracking} />
@@ -72,7 +80,7 @@ export default function LocationMap() {
             title="当前位置"
           />
           <Polyline
-            coordinates={records.map(r => ({
+            coordinates={tempRecords.map(r => ({
               latitude: r.latitude,
               longitude: r.longitude,
             }))}
@@ -81,7 +89,7 @@ export default function LocationMap() {
           />
         </MapView>
       )}
-    </ThemedView>
+    </LinearGradient>
   );
 }
 
